@@ -142,6 +142,25 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+  warehouse-postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=warehouse_db_user
+      - POSTGRES_PASSWORD=warehouse_1234
+      - POSTGRES_DB=warehouse
+    volumes:
+      - warehouse-postgres-data:/var/lib/postgresql/data
+      # DDL/init scripts land in ./infra/postgres once the schema is defined
+    ports:
+      - "5433:5432" # other local port to avoid conflicts with airflow-postgres
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "warehouse_db_user", "-d", "warehouse"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+
 volumes:
   airflow-postgres-data:
   airflow-logs:
+  warehouse-postgres-data:

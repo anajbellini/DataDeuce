@@ -19,6 +19,7 @@ logs/
 airflow.db
 airflow-webserver.pid
 standalone_admin_password.txt
+infra/airflow/config/
 
 # Environment / secrets
 .env
