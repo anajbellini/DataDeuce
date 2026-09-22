@@ -1,0 +1,9 @@
+[project]
+name = "data-deuce"
+version = "0.1.0"
+description = "Tennis data engineering portfolio project (Airflow + dbt)"
+requires-python = ">=3.12"
+dependencies = [
+    "dbt-core==1.12.3",
+    "dbt-postgres==1.11.0",
+]
