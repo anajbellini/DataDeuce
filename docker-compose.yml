@@ -18,7 +18,7 @@ x-airflow-common: &airflow-common
     - ./infra/airflow/dags:/opt/airflow/dags
     - ./infra/airflow/config:/opt/airflow/config
     - ./infra/airflow/plugins:/opt/airflow/plugins
-    - airflow-logs:/opt/airflow/logs # named volume to be cleaned after down -v
+    - airflow-logs:/opt/airflow/logs  # named volume to be cleaned after down -v
 
 services:
   airflow-postgres:
@@ -160,7 +160,7 @@ services:
       - warehouse-postgres-data:/var/lib/postgresql/data
       # DDL/init scripts land in ./infra/postgres once the schema is defined
     ports:
-      - "5433:5432" # other local port to avoid conflicts with airflow-postgres
+      - "5433:5432"  # other local port to avoid conflicts with airflow-postgres
     healthcheck:
       test:
         [
