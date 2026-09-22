@@ -3,7 +3,7 @@ x-airflow-common: &airflow-common
   environment:
     - AIRFLOW__CORE__EXECUTOR=LocalExecutor
     - AIRFLOW__CORE__AUTH_MANAGER=airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-    - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow_db_user:airflow_1234@airflow-postgres:5432/airflow
+    - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${AIRFLOW_DB_USER:-airflow_db_user}:${AIRFLOW_DB_PASSWORD:-airflow_1234}@airflow-postgres:5432/${AIRFLOW_DB_NAME:-airflow}
     - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY:-}
     - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=false
     - AIRFLOW__CORE__LOAD_EXAMPLES=false
@@ -24,15 +24,23 @@ services:
   airflow-postgres:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=airflow_db_user
-      - POSTGRES_PASSWORD=airflow_1234
-      - POSTGRES_DB=airflow
+      - POSTGRES_USER=${AIRFLOW_DB_USER:-airflow_db_user}
+      - POSTGRES_PASSWORD=${AIRFLOW_DB_PASSWORD:-airflow_1234}
+      - POSTGRES_DB=${AIRFLOW_DB_NAME:-airflow}
     volumes:
       - airflow-postgres-data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "airflow_db_user", "-d", "airflow"]
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-U",
+          "${AIRFLOW_DB_USER:-airflow_db_user}",
+          "-d",
+          "${AIRFLOW_DB_NAME:-airflow}",
+        ]
       interval: 10s
       retries: 5
       start_period: 5s
@@ -145,16 +153,24 @@ services:
   warehouse-postgres:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=warehouse_db_user
-      - POSTGRES_PASSWORD=warehouse_1234
-      - POSTGRES_DB=warehouse
+      - POSTGRES_USER=${WAREHOUSE_DB_USER:-warehouse_db_user}
+      - POSTGRES_PASSWORD=${WAREHOUSE_DB_PASSWORD:-warehouse_1234}
+      - POSTGRES_DB=${WAREHOUSE_DB_NAME:-warehouse}
     volumes:
       - warehouse-postgres-data:/var/lib/postgresql/data
       # DDL/init scripts land in ./infra/postgres once the schema is defined
     ports:
       - "5433:5432" # other local port to avoid conflicts with airflow-postgres
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "warehouse_db_user", "-d", "warehouse"]
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-U",
+          "${WAREHOUSE_DB_USER:-warehouse_db_user}",
+          "-d",
+          "${WAREHOUSE_DB_NAME:-warehouse}",
+        ]
       interval: 10s
       retries: 5
       start_period: 5s
