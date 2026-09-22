@@ -36,3 +36,8 @@ lint-dbt:
   stage: lint
   script:
     - uv run sqlfluff lint src/dbt
+
+lint-yaml:
+  stage: lint
+  script:
+    - uv run yamllint .
