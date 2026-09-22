@@ -7,3 +7,9 @@ dependencies = [
     "dbt-core==1.12.3",
     "dbt-postgres==1.11.0",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.8",
+    "sqlfluff>=4.3.0",
+]
