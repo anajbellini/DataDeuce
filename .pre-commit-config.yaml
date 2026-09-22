@@ -8,6 +8,8 @@ repos:
   - repo: https://github.com/sqlfluff/sqlfluff
     rev: 4.3.0
     hooks:
+      - id: sqlfluff-fix
+        files: ^src/dbt/
       - id: sqlfluff-lint
         files: ^src/dbt/
 
