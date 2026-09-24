@@ -158,7 +158,7 @@ services:
       - POSTGRES_DB=${WAREHOUSE_DB_NAME:-warehouse}
     volumes:
       - warehouse-postgres-data:/var/lib/postgresql/data
-      # DDL/init scripts land in ./infra/postgres once the schema is defined
+      - ./infra/postgres:/docker-entrypoint-initdb.d:ro
     ports:
       - "5433:5432"  # other local port to avoid conflicts with airflow-postgres
     healthcheck:
