@@ -1,6 +1,6 @@
 CREATE SCHEMA IF NOT EXISTS bronze;
 
--- creating table for *.csv
+-- creating table for <year>.csv
 CREATE TABLE IF NOT EXISTS bronze.atp_history
 (
     id                BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
