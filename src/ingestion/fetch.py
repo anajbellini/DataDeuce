@@ -23,11 +23,12 @@ class FetchResult:
 def list_source_files(tour: str, source_url: str) -> list[SourceFile]:
     pattern = _WTA_REGEX if tour == "wta" else _ATP_REGEX
 
-    response = requests.get(source_url).json()
+    response = requests.get(source_url)
     response.raise_for_status()
+    data = response.json()
 
     return [
         SourceFile(name=item["name"], url=item["url"])
-        for item in response["files"]
+        for item in data["files"]
         if pattern.fullmatch(item["name"])
     ]
