@@ -20,7 +20,7 @@ class FetchResult:
     source_file: str
 
 
-def list_source_files(tour: str, source_url: str) -> list[SourceFile]:
+def list_source_files(tour: str, source_url: str = SOURCE_URL) -> list[SourceFile]:
     pattern = _WTA_REGEX if tour == "wta" else _ATP_REGEX
 
     response = requests.get(source_url)
