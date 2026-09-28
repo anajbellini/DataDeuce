@@ -516,6 +516,7 @@ dependencies = [
     { name = "dbt-postgres" },
     { name = "pandas" },
     { name = "psycopg", extra = ["binary"] },
+    { name = "python-dotenv" },
     { name = "requests" },
 ]
 
@@ -535,6 +536,7 @@ requires-dist = [
     { name = "dbt-postgres", specifier = "==1.11.0" },
     { name = "pandas", specifier = ">=3.0.6" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6" },
+    { name = "python-dotenv", specifier = ">=1.2.3" },
     { name = "requests", specifier = ">=2.34.2" },
 ]
 
