@@ -74,7 +74,9 @@ def load(conn: psycopg.Connection, tour: str, source_file: str, content: bytes) 
     if already_loaded(conn, table, source_file, source_file_hash):
         return 0
 
-    rows = list(csv.DictReader(io.StringIO(content.decode("utf-8"))))
+    rows = list(
+        csv.DictReader(io.StringIO(content.decode("utf-8")), restkey="_extra_fields")
+    )
 
     query = sql.SQL(
         "INSERT INTO {table} (payload, _source_file, _source_file_hash) VALUES (%s, %s, %s)"
