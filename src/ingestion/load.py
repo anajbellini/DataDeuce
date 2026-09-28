@@ -1,5 +1,9 @@
 """Load fetched ATP/WTA raw CSVs into the warehouse-postgres bronze schema."""
 
+import csv
+import hashlib
+import io
+import json
 from os import environ, getenv
 
 import psycopg
@@ -50,3 +54,38 @@ def already_loaded(
     with db_conn.cursor() as cursor:
         cursor.execute(query, (source_file, source_file_hash))
         return cursor.fetchone() is not None
+
+
+def load(
+    db_conn: psycopg.Connection, tour: str, source_file: str, source_file_content: bytes
+) -> int:
+    """Hash content (sha256), skip if already loaded, else parse CSV rows and insert as jsonb payload.
+
+    Args:
+        db_conn: The database connection.
+        tour: Either "atp" or "wta", used to resolve the target bronze table.
+        source_file: The source file name (e.g. "2025.csv").
+        source_file_content: The raw CSV bytes, as returned by fetch().
+
+    Returns:
+        Rows inserted, or 0 if the file was already loaded.
+    """
+    table = TABLES[tour]
+    source_file_hash = hashlib.sha256(source_file_content).hexdigest()
+
+    if already_loaded(db_conn, table, source_file, source_file_hash):
+        return 0
+
+    rows = list(csv.DictReader(io.StringIO(source_file_content.decode("utf-8"))))
+
+    query = sql.SQL(
+        "INSERT INTO {table} (payload, _source_file, _source_file_hash) VALUES (%s, %s, %s)"
+    ).format(table=sql.Identifier(*table.split(".")))
+
+    with db_conn.cursor() as cursor:
+        cursor.executemany(
+            query, [(json.dumps(row), source_file, source_file_hash) for row in rows]
+        )
+    db_conn.commit()
+
+    return len(rows)
