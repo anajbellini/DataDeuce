@@ -34,12 +34,12 @@ def get_connection() -> psycopg.Connection:
 
 
 def already_loaded(
-    db_conn: psycopg.Connection, table: str, source_file: str, source_file_hash: str
+    conn: psycopg.Connection, table: str, source_file: str, source_file_hash: str
 ) -> bool:
-    """Check if (_source_file, _source_file_hash) before inserting already exists.
+    """Check if (_source_file, _source_file_hash) already exists before inserting.
 
     Args:
-        db_conn: The database connection.
+        conn: The database connection.
         table: The table to check.
         source_file: The source file path.
         source_file_hash: The hash of the source file.
@@ -51,41 +51,39 @@ def already_loaded(
         "SELECT 1 FROM {table} WHERE _source_file = %s AND _source_file_hash = %s LIMIT 1"
     ).format(table=sql.Identifier(*table.split(".")))
 
-    with db_conn.cursor() as cursor:
+    with conn.cursor() as cursor:
         cursor.execute(query, (source_file, source_file_hash))
         return cursor.fetchone() is not None
 
 
-def load(
-    db_conn: psycopg.Connection, tour: str, source_file: str, source_file_content: bytes
-) -> int:
+def load(conn: psycopg.Connection, tour: str, source_file: str, content: bytes) -> int:
     """Hash content (sha256), skip if already loaded, else parse CSV rows and insert as jsonb payload.
 
     Args:
-        db_conn: The database connection.
+        conn: The database connection.
         tour: Either "atp" or "wta", used to resolve the target bronze table.
         source_file: The source file name (e.g. "2025.csv").
-        source_file_content: The raw CSV bytes, as returned by fetch().
+        content: The raw CSV bytes, as returned by fetch().
 
     Returns:
         Rows inserted, or 0 if the file was already loaded.
     """
     table = TABLES[tour]
-    source_file_hash = hashlib.sha256(source_file_content).hexdigest()
+    source_file_hash = hashlib.sha256(content).hexdigest()
 
-    if already_loaded(db_conn, table, source_file, source_file_hash):
+    if already_loaded(conn, table, source_file, source_file_hash):
         return 0
 
-    rows = list(csv.DictReader(io.StringIO(source_file_content.decode("utf-8"))))
+    rows = list(csv.DictReader(io.StringIO(content.decode("utf-8"))))
 
     query = sql.SQL(
         "INSERT INTO {table} (payload, _source_file, _source_file_hash) VALUES (%s, %s, %s)"
     ).format(table=sql.Identifier(*table.split(".")))
 
-    with db_conn.cursor() as cursor:
+    with conn.cursor() as cursor:
         cursor.executemany(
             query, [(json.dumps(row), source_file, source_file_hash) for row in rows]
         )
-    db_conn.commit()
+    conn.commit()
 
     return len(rows)
