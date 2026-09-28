@@ -82,10 +82,15 @@ def load(conn: psycopg.Connection, tour: str, source_file: str, content: bytes) 
         "INSERT INTO {table} (payload, _source_file, _source_file_hash) VALUES (%s, %s, %s)"
     ).format(table=sql.Identifier(*table.split(".")))
 
-    with conn.cursor() as cursor:
-        cursor.executemany(
-            query, [(json.dumps(row), source_file, source_file_hash) for row in rows]
-        )
-    conn.commit()
+    try:
+        with conn.cursor() as cursor:
+            cursor.executemany(
+                query,
+                [(json.dumps(row), source_file, source_file_hash) for row in rows],
+            )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
     return len(rows)
