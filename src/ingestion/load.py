@@ -4,6 +4,7 @@ import csv
 import hashlib
 import io
 import json
+import logging
 from os import environ, getenv
 
 import psycopg
@@ -11,6 +12,8 @@ from dotenv import load_dotenv
 from psycopg import sql
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 TABLES = {"atp": "bronze.atp_history", "wta": "bronze.wta_history"}
 
