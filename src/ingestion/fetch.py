@@ -54,11 +54,14 @@ def list_source_files(tour: str, source_url: str = SOURCE_URL) -> list[SourceFil
     response.raise_for_status()
     data = response.json()
 
-    return [
+    source_files = [
         SourceFile(name=item["name"], url=item["url"])
         for item in data["files"]
         if pattern.fullmatch(item["name"])
     ]
+    logger.info("source_files_listed", extra={"tour": tour, "count": len(source_files)})
+
+    return source_files
 
 
 def _is_transient(exc: BaseException) -> bool:
@@ -99,6 +102,8 @@ def fetch(source_file: SourceFile) -> FetchResult:
     Raises:
         requests.HTTPError: If the download request fails.
     """
+    logger.info("fetch_started", extra={"source_file": source_file.name})
+
     response = requests.get(source_file.url)
     response.raise_for_status()
     content = response.content
