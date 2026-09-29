@@ -12,6 +12,7 @@ variables:
 
 stages:
   - lint
+  - test
 
 default:
   image: ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON_VERSION-$BASE_LAYER
@@ -41,3 +42,8 @@ lint-yaml:
   stage: lint
   script:
     - uv run yamllint .
+
+test-python:
+  stage: test
+  script:
+    - uv run pytest
