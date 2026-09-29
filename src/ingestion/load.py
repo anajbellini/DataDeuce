@@ -95,6 +95,10 @@ def load(conn: psycopg.Connection, tour: str, source_file: str, content: bytes) 
                 [(json.dumps(row), source_file, source_file_hash) for row in rows],
             )
         conn.commit()
+        logger.info(
+            "rows_inserted",
+            extra={"tour": tour, "source_file": source_file, "rows": len(rows)},
+        )
     except Exception:
         conn.rollback()
         raise
