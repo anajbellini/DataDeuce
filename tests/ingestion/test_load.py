@@ -1,11 +1,7 @@
 """Tests for src.ingestion.load.
 
-These are unit tests: they never touch a real Postgres. FakeConnection/FakeCursor
-stand in for psycopg's connection and cursor, recording what load() *would* have
-sent to the database so we can assert on it. That keeps the suite fast and
-independent of docker-compose being up. If we later want to verify the actual
-bronze tables (real inserts, real constraints), that's a separate, slower
-integration suite.
+Unit tests only — FakeConnection/FakeCursor stand in for psycopg, so no
+real Postgres is touched.
 """
 
 import hashlib
