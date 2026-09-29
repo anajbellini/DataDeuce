@@ -101,6 +101,9 @@ def load(conn: psycopg.Connection, tour: str, source_file: str, content: bytes) 
         )
     except Exception:
         conn.rollback()
+        logger.exception(
+            "insert_failed", extra={"tour": tour, "source_file": source_file}
+        )
         raise
 
     return len(rows)
