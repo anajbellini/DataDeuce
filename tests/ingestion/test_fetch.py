@@ -19,7 +19,7 @@ class FakeResponse:
 
     def raise_for_status(self):
         if self.status_code >= 400:
-            raise requests.HTTPError(f"{self.status_code} error")
+            raise requests.HTTPError(f"{self.status_code} error", response=self)
 
 
 FILES_PAYLOAD = {

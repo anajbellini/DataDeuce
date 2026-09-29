@@ -4,6 +4,7 @@ import csv
 import hashlib
 import io
 import json
+import logging
 from os import environ, getenv
 
 import psycopg
@@ -11,6 +12,8 @@ from dotenv import load_dotenv
 from psycopg import sql
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 TABLES = {"atp": "bronze.atp_history", "wta": "bronze.wta_history"}
 
@@ -72,6 +75,9 @@ def load(conn: psycopg.Connection, tour: str, source_file: str, content: bytes) 
     source_file_hash = hashlib.sha256(content).hexdigest()
 
     if already_loaded(conn, table, source_file, source_file_hash):
+        logger.info(
+            "skip_already_loaded", extra={"tour": tour, "source_file": source_file}
+        )
         return 0
 
     rows = list(
@@ -89,8 +95,15 @@ def load(conn: psycopg.Connection, tour: str, source_file: str, content: bytes) 
                 [(json.dumps(row), source_file, source_file_hash) for row in rows],
             )
         conn.commit()
+        logger.info(
+            "rows_inserted",
+            extra={"tour": tour, "source_file": source_file, "rows": len(rows)},
+        )
     except Exception:
         conn.rollback()
+        logger.exception(
+            "insert_failed", extra={"tour": tour, "source_file": source_file}
+        )
         raise
 
     return len(rows)
