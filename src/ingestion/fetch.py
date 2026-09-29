@@ -78,7 +78,7 @@ def _is_transient(exc: BaseException) -> bool:
     """
     if isinstance(exc, (requests.ConnectionError, requests.Timeout)):
         return True
-    if not isinstance(exc, requests.HTTPError):
+    if not isinstance(exc, requests.HTTPError) or exc.response is None:
         return False
     status_code = exc.response.status_code
     return status_code >= 500 or status_code in _RETRYABLE_STATUS_CODES
