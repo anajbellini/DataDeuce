@@ -1,5 +1,8 @@
 x-airflow-common: &airflow-common
-  image: apache/airflow:3.3.2
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: datadeuce-airflow:local
   environment:
     - AIRFLOW__CORE__EXECUTOR=LocalExecutor
     - AIRFLOW__CORE__AUTH_MANAGER=airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
