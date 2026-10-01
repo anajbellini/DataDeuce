@@ -92,6 +92,17 @@ def test_load_skips_rows_already_loaded():
     assert conn.cursor_obj.executemany_calls == []
 
 
+@pytest.mark.parametrize("content", [b"", b"winner_name,loser_name,score\n"])
+def test_load_raises_and_inserts_nothing_for_a_file_with_no_data_rows(content):
+    conn = FakeConnection()
+
+    with pytest.raises(ValueError, match="2024.csv"):
+        load(conn, "atp", "2024.csv", content)
+
+    assert conn.cursor_obj.executemany_calls == []
+    assert not conn.committed
+
+
 def test_load_payload_schema_matches_csv_header():
     conn = FakeConnection()
 
