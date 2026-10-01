@@ -70,6 +70,9 @@ def load(conn: psycopg.Connection, tour: str, source_file: str, content: bytes) 
 
     Returns:
         Rows inserted, or 0 if the file was already loaded.
+
+    Raises:
+        ValueError: If the file has no data rows.
     """
     table = TABLES[tour]
     source_file_hash = hashlib.sha256(content).hexdigest()
@@ -83,6 +86,9 @@ def load(conn: psycopg.Connection, tour: str, source_file: str, content: bytes) 
     rows = list(
         csv.DictReader(io.StringIO(content.decode("utf-8")), restkey="_extra_fields")
     )
+
+    if not rows:
+        raise ValueError(f"{source_file} has no data rows")
 
     query = sql.SQL(
         "INSERT INTO {table} (payload, _source_file, _source_file_hash) VALUES (%s, %s, %s)"
