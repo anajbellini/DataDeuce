@@ -33,7 +33,7 @@ services:
     volumes:
       - airflow-postgres-data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test:
         [
@@ -75,7 +75,7 @@ services:
     command: api-server
     user: "${AIRFLOW_UID:-50000}:0"
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     healthcheck:
       test:
         ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
@@ -164,7 +164,7 @@ services:
       - warehouse-postgres-data:/var/lib/postgresql/data
       - ./infra/postgres:/docker-entrypoint-initdb.d:ro
     ports:
-      - "5433:5432"  # other local port to avoid conflicts with airflow-postgres
+      - "127.0.0.1:5433:5432"  # other local port to avoid conflicts with airflow-postgres
     healthcheck:
       test:
         [
