@@ -159,7 +159,7 @@ services:
       - POSTGRES_USER=${WAREHOUSE_DB_USER:-warehouse_db_user}
       - POSTGRES_PASSWORD=${WAREHOUSE_DB_PASSWORD:-warehouse_1234}
       - POSTGRES_DB=${WAREHOUSE_DB_NAME:-warehouse}
-      - BRONZE_WRITER_PASSWORD=${BRONZE_WRITER_PASSWORD:?set BRONZE_WRITER_PASSWORD in .env}
+      - INGESTION_RUNNER_PASSWORD=${INGESTION_RUNNER_PASSWORD:?set it in .env}
     volumes:
       - warehouse-postgres-data:/var/lib/postgresql/data
       - ./infra/postgres:/docker-entrypoint-initdb.d:ro
