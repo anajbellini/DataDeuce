@@ -1,6 +1,7 @@
 """Ingest ATP/WTA raw match data into the warehouse bronze schema."""
 
 import logging
+from datetime import UTC, datetime, timedelta
 
 from airflow.sdk import dag, task
 
@@ -13,7 +14,13 @@ logger = logging.getLogger(__name__)
 _TOURS = ["atp", "wta"]
 
 
-@dag()
+@dag(
+    start_date=datetime(2026, 10, 1, tzinfo=UTC),
+    schedule="@daily",
+    catchup=False,
+    max_active_runs=1,
+    default_args={"retries": 2, "retry_delay": timedelta(seconds=30)},
+)
 def bronze_layer():
     """Fetch every ATP/WTA source file and load it into bronze."""
 
