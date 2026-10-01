@@ -9,6 +9,7 @@ from ingestion.fetch import SourceFile, fetch, list_source_files
 from ingestion.load import get_connection, load
 from logging_config import configure_logger
 
+configure_logger()
 logger = logging.getLogger(__name__)
 
 _TOURS = ["atp", "wta"]
@@ -26,7 +27,6 @@ def bronze_layer():
 
     @task
     def list_files():
-        configure_logger()
         return [
             {"tour": tour, "name": source.name, "url": source.url}
             for tour in _TOURS
@@ -35,7 +35,6 @@ def bronze_layer():
 
     @task
     def fetch_load(source: dict[str, str]) -> int:
-        configure_logger()
         fetched = fetch(SourceFile(name=source["name"], url=source["url"]))
 
         with get_connection() as conn:
@@ -44,7 +43,6 @@ def bronze_layer():
     @task
     def summarize(row_counts) -> None:
         row_counts = list(row_counts)
-        configure_logger()
         logger.info(
             "bronze_load_summary",
             extra={
