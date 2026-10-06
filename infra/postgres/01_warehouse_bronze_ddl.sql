@@ -18,5 +18,5 @@ CREATE TABLE IF NOT EXISTS bronze.atp_ongoing (LIKE bronze.atp_history INCLUDING
 -- creating table for *_wta.csv
 CREATE TABLE IF NOT EXISTS bronze.wta_history (LIKE bronze.atp_history INCLUDING ALL);
 
--- creating table for wta_ongoing_tourneys.csv.csv
+-- creating table for wta_ongoing_tourneys.csv
 CREATE TABLE IF NOT EXISTS bronze.wta_ongoing (LIKE bronze.atp_history INCLUDING ALL);
