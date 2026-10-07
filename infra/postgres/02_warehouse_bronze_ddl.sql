@@ -7,7 +7,7 @@ create table if not exists bronze.atp_history
     payload JSONB,
     _source_file VARCHAR not null,
     _source_file_hash VARCHAR,
-    _ingested_at TIMESTAMP(3) default CURRENT_TIMESTAMP(3)
+    _ingested_at TIMESTAMPTZ not null default now()
 );
 
 create index if not exists atp_history__source_file__source_file_hash_idx on bronze.atp_history (
