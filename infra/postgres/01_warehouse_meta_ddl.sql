@@ -5,5 +5,5 @@ create table if not exists meta.source_file_state
 (
     source_file VARCHAR not null primary key,
     source_mtime TIMESTAMPTZ not null,
-    _loaded_at TIMESTAMP(3) default CURRENT_TIMESTAMP(3)
+    processed_at TIMESTAMPTZ not null default now()
 );
