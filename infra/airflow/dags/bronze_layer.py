@@ -4,7 +4,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from airflow.sdk import dag, task
+from airflow.sdk import TriggerRule, dag, task
 
 from ingestion.db import get_connection
 from ingestion.fetch import SourceFile, fetch, list_source_files
@@ -33,7 +33,13 @@ def bronze_layer():
         with get_connection() as conn:
             states = get_state(conn)
 
-        return [
+        listed = [
+            (tour, ongoing, source)
+            for tour in _TOURS
+            for ongoing in [True, False]
+            for source in list_source_files(tour, ongoing)
+        ]
+        changed = [
             {
                 "tour": tour,
                 "ongoing": ongoing,
@@ -41,11 +47,19 @@ def bronze_layer():
                 "url": source.url,
                 "mtime": source.mtime,
             }
-            for tour in _TOURS
-            for ongoing in [True, False]
-            for source in list_source_files(tour, ongoing)
+            for tour, ongoing, source in listed
             if has_changed(source.name, source.mtime, states)
         ]
+
+        logger.info(
+            "source_files_filtered",
+            extra={
+                "files": len(listed),
+                "files_changed": len(changed),
+                "files_unchanged": len(listed) - len(changed),
+            },
+        )
+        return changed
 
     @task
     def fetch_load(source: dict[str, Any]) -> int:
@@ -70,7 +84,7 @@ def bronze_layer():
 
             return rows
 
-    @task
+    @task(trigger_rule=TriggerRule.NONE_FAILED)
     def summarize(row_counts) -> None:
         row_counts = list(row_counts)
         logger.info(

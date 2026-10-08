@@ -65,6 +65,10 @@ def test_fetch_load_is_mapped_once_per_file(dag):
     assert dag.get_task("fetch_load").is_mapped
 
 
+def test_summarize_runs_even_when_fetch_load_was_skipped(dag):
+    assert dag.get_task("summarize").trigger_rule == "none_failed"
+
+
 def test_dag_runs_one_at_a_time_without_backfilling(dag):
     assert dag.catchup is False
     assert dag.max_active_runs == 1
@@ -138,6 +142,21 @@ def test_list_files_returns_files_whose_mtime_changed(dag, monkeypatch):
     assert _listed("atp", True, "ongoing_tourneys.csv", NEWER_MTIME) in (
         task.python_callable()
     )
+
+
+def test_list_files_logs_how_many_files_changed_and_how_many_were_skipped(
+    dag, monkeypatch, caplog
+):
+    state = {"2025.csv": MTIME, "wta_ongoing_tourneys.csv": MTIME}
+    task = _patch_list_files(monkeypatch, dag, state)
+
+    with caplog.at_level(logging.INFO):
+        task.python_callable()
+
+    record = next(r for r in caplog.records if r.message == "source_files_filtered")
+    assert record.files == 4
+    assert record.files_changed == 2
+    assert record.files_unchanged == 2
 
 
 def test_list_files_returns_nothing_when_no_file_changed(dag, monkeypatch):
