@@ -1,4 +1,4 @@
-## [unreleased]
+## [0.1.0] - 2026-10-08
 
 ### Features
 
@@ -81,6 +81,7 @@
 - Fixed typo on comment
 - Point the compose env comment to db.py
 - Update the README for the incremental ingestion
+- Regenerate CHANGELOG.md
 
 ### Refactor
 
