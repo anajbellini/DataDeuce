@@ -17,7 +17,7 @@ x-airflow-common: &airflow-common
     - AIRFLOW_CONFIG=/opt/airflow/config/airflow.cfg
     - _AIRFLOW_WWW_USER_USERNAME=${_AIRFLOW_WWW_USER_USERNAME:-admin}
     - _AIRFLOW_WWW_USER_PASSWORD=${_AIRFLOW_WWW_USER_PASSWORD:-admin}
-    # read by src/ingestion/load.py (warehouse over the compose network)
+    # read by src/ingestion/db.py (warehouse over the compose network)
     - WAREHOUSE_DB_HOST=warehouse-postgres
     - WAREHOUSE_DB_PORT=5432
     - WAREHOUSE_DB_NAME=${WAREHOUSE_DB_NAME:-warehouse}

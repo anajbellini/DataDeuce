@@ -2,11 +2,14 @@
 
 import logging
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from airflow.sdk import dag, task
+from airflow.sdk import TriggerRule, dag, task
 
+from ingestion.db import get_connection
 from ingestion.fetch import SourceFile, fetch, list_source_files
-from ingestion.load import get_connection, load
+from ingestion.load import load
+from ingestion.state import get_state, has_changed, save_state
 from logging_config import configure_logger
 
 configure_logger()
@@ -17,7 +20,7 @@ _TOURS = ["atp", "wta"]
 
 @dag(
     start_date=datetime(2026, 10, 1, tzinfo=UTC),
-    schedule="@daily",
+    schedule="0 */3 * * *",
     catchup=False,
     max_active_runs=1,
     default_args={"retries": 2, "retry_delay": timedelta(seconds=30)},
@@ -27,20 +30,61 @@ def bronze_layer():
 
     @task
     def list_files():
-        return [
-            {"tour": tour, "name": source.name, "url": source.url}
+        with get_connection() as conn:
+            states = get_state(conn)
+
+        listed = [
+            (tour, ongoing, source)
             for tour in _TOURS
-            for source in list_source_files(tour)
+            for ongoing in [True, False]
+            for source in list_source_files(tour, ongoing)
+        ]
+        changed = [
+            {
+                "tour": tour,
+                "ongoing": ongoing,
+                "name": source.name,
+                "url": source.url,
+                "mtime": source.mtime,
+            }
+            for tour, ongoing, source in listed
+            if has_changed(source.name, source.mtime, states)
         ]
 
+        logger.info(
+            "source_files_filtered",
+            extra={
+                "files": len(listed),
+                "files_changed": len(changed),
+                "files_unchanged": len(listed) - len(changed),
+            },
+        )
+        return changed
+
     @task
-    def fetch_load(source: dict[str, str]) -> int:
-        fetched = fetch(SourceFile(name=source["name"], url=source["url"]))
+    def fetch_load(source: dict[str, Any]) -> int:
+        fetched = fetch(
+            SourceFile(
+                name=source["name"],
+                url=source["url"],
+                mtime=source["mtime"],
+            )
+        )
 
         with get_connection() as conn:
-            return load(conn, source["tour"], fetched.source_file, fetched.content)
+            rows = load(
+                conn,
+                source["tour"],
+                source["ongoing"],
+                fetched.source_file,
+                fetched.content,
+            )
 
-    @task
+            save_state(conn, source["name"], source["mtime"])
+
+            return rows
+
+    @task(trigger_rule=TriggerRule.NONE_FAILED)
     def summarize(row_counts) -> None:
         row_counts = list(row_counts)
         logger.info(

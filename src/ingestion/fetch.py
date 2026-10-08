@@ -3,6 +3,7 @@
 import logging
 import re
 from dataclasses import dataclass
+from datetime import datetime
 
 import requests
 from tenacity import (
@@ -17,7 +18,9 @@ logger = logging.getLogger(__name__)
 
 SOURCE_URL = "https://stats.tennismylife.org/api/data-files"
 _ATP_REGEX = re.compile(r"\d{4}\.csv")
+_ATP_ONGOING_REGEX = re.compile(r"ongoing_tourneys\.csv")
 _WTA_REGEX = re.compile(r"\d{4}_wta\.csv")
+_WTA_ONGOING_REGEX = re.compile(r"wta_ongoing_tourneys\.csv")
 _RETRYABLE_STATUS_CODES = {408, 429}
 
 
@@ -27,6 +30,7 @@ class SourceFile:
 
     name: str
     url: str
+    mtime: datetime
 
 
 @dataclass
@@ -37,25 +41,37 @@ class FetchResult:
     source_file: str
 
 
-def list_source_files(tour: str, source_url: str = SOURCE_URL) -> list[SourceFile]:
-    """List the per-year raw match CSVs available for a tour.
+def list_source_files(
+    tour: str, ongoing: bool, source_url: str = SOURCE_URL
+) -> list[SourceFile]:
+    """List the raw match CSVs available for a tour, with their source mtime.
 
     Args:
         tour: Either "atp" or "wta".
+        ongoing: True for the in-progress tournaments file, False for the
+            per-year history files.
         source_url: The TennisMyLife data-files API endpoint.
 
     Returns:
-        One SourceFile per matching year, excluding non-year files
-        (e.g. Challenger, Qualifying, rankings snapshots).
+        The ongoing file when ongoing is True, otherwise one SourceFile per
+        year. Other files (e.g. Challenger, Qualifying, rankings snapshots)
+        are excluded.
     """
-    pattern = _WTA_REGEX if tour == "wta" else _ATP_REGEX
+    if ongoing:
+        pattern = _WTA_ONGOING_REGEX if tour == "wta" else _ATP_ONGOING_REGEX
+    else:
+        pattern = _WTA_REGEX if tour == "wta" else _ATP_REGEX
 
     response = requests.get(source_url)
     response.raise_for_status()
     data = response.json()
 
     source_files = [
-        SourceFile(name=item["name"], url=item["url"])
+        SourceFile(
+            name=item["name"],
+            url=item["url"],
+            mtime=datetime.fromisoformat(item["mtime"]),
+        )
         for item in data["files"]
         if pattern.fullmatch(item["name"])
     ]

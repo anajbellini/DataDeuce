@@ -6,9 +6,11 @@ real Postgres is touched.
 
 import hashlib
 import json
+import logging
 
 import pytest
 
+from src.ingestion import load as load_module
 from src.ingestion.load import already_loaded, load
 
 
@@ -69,7 +71,7 @@ ATP_CSV = (
 def test_load_returns_row_count_matching_csv_rows():
     conn = FakeConnection()
 
-    inserted = load(conn, "atp", "2024.csv", ATP_CSV)
+    inserted = load(conn, "atp", False, "2024.csv", ATP_CSV)
 
     assert inserted == 2
 
@@ -77,7 +79,7 @@ def test_load_returns_row_count_matching_csv_rows():
 def test_load_inserts_one_row_per_csv_row():
     conn = FakeConnection()
 
-    load(conn, "atp", "2024.csv", ATP_CSV)
+    load(conn, "atp", False, "2024.csv", ATP_CSV)
 
     [(_, params)] = conn.cursor_obj.executemany_calls
     assert len(params) == 2
@@ -86,10 +88,35 @@ def test_load_inserts_one_row_per_csv_row():
 def test_load_skips_rows_already_loaded():
     conn = FakeConnection(fetchone_result=(1,))  # already_loaded() finds a match
 
-    inserted = load(conn, "atp", "2024.csv", ATP_CSV)
+    inserted = load(conn, "atp", False, "2024.csv", ATP_CSV)
 
     assert inserted == 0
     assert conn.cursor_obj.executemany_calls == []
+
+
+@pytest.mark.parametrize(
+    ("tour", "ongoing", "expected_table"),
+    [
+        ("atp", False, "bronze.atp_history"),
+        ("atp", True, "bronze.atp_ongoing"),
+        ("wta", False, "bronze.wta_history"),
+        ("wta", True, "bronze.wta_ongoing"),
+    ],
+)
+def test_load_targets_the_table_for_its_tour_and_ongoing_flag(
+    monkeypatch, tour, ongoing, expected_table
+):
+    tables = []
+
+    def spy_already_loaded(conn, table, source_file, source_file_hash):
+        tables.append(table)
+        return False
+
+    monkeypatch.setattr(load_module, "already_loaded", spy_already_loaded)
+
+    load(FakeConnection(), tour, ongoing, "2024.csv", ATP_CSV)
+
+    assert tables == [expected_table]
 
 
 @pytest.mark.parametrize("content", [b"", b"winner_name,loser_name,score\n"])
@@ -97,7 +124,7 @@ def test_load_raises_and_inserts_nothing_for_a_file_with_no_data_rows(content):
     conn = FakeConnection()
 
     with pytest.raises(ValueError, match="2024.csv"):
-        load(conn, "atp", "2024.csv", content)
+        load(conn, "atp", False, "2024.csv", content)
 
     assert conn.cursor_obj.executemany_calls == []
     assert not conn.committed
@@ -106,7 +133,7 @@ def test_load_raises_and_inserts_nothing_for_a_file_with_no_data_rows(content):
 def test_load_payload_schema_matches_csv_header():
     conn = FakeConnection()
 
-    load(conn, "atp", "2024.csv", ATP_CSV)
+    load(conn, "atp", False, "2024.csv", ATP_CSV)
 
     [(_, params)] = conn.cursor_obj.executemany_calls
     payload = json.loads(params[0][0])
@@ -116,7 +143,7 @@ def test_load_payload_schema_matches_csv_header():
 def test_load_never_inserts_null_source_file_or_hash():
     conn = FakeConnection()
 
-    load(conn, "atp", "2024.csv", ATP_CSV)
+    load(conn, "atp", False, "2024.csv", ATP_CSV)
 
     [(_, params)] = conn.cursor_obj.executemany_calls
     for _payload, source_file, source_file_hash in params:
@@ -128,7 +155,7 @@ def test_load_source_file_hash_is_sha256_of_content():
     conn = FakeConnection()
     expected_hash = hashlib.sha256(ATP_CSV).hexdigest()
 
-    load(conn, "atp", "2024.csv", ATP_CSV)
+    load(conn, "atp", False, "2024.csv", ATP_CSV)
 
     [(_, params)] = conn.cursor_obj.executemany_calls
     assert all(source_file_hash == expected_hash for _, _, source_file_hash in params)
@@ -138,7 +165,7 @@ def test_load_preserves_extra_fields_from_ragged_row():
     ragged_csv = b"a,b\n1,2,3\n"  # one extra field beyond the header
 
     conn = FakeConnection()
-    load(conn, "atp", "2024.csv", ragged_csv)
+    load(conn, "atp", False, "2024.csv", ragged_csv)
 
     [(_, params)] = conn.cursor_obj.executemany_calls
     payload = json.loads(params[0][0])
@@ -149,7 +176,7 @@ def test_load_fills_missing_trailing_fields_with_none():
     short_row_csv = b"a,b,c\n1,2\n"  # row is missing the trailing "c" value
 
     conn = FakeConnection()
-    load(conn, "atp", "2024.csv", short_row_csv)
+    load(conn, "atp", False, "2024.csv", short_row_csv)
 
     [(_, params)] = conn.cursor_obj.executemany_calls
     payload = json.loads(params[0][0])
@@ -160,7 +187,7 @@ def test_load_rolls_back_and_reraises_on_insert_failure():
     conn = FakeConnection(raise_on_executemany=True)
 
     with pytest.raises(RuntimeError):
-        load(conn, "atp", "2024.csv", ATP_CSV)
+        load(conn, "atp", False, "2024.csv", ATP_CSV)
 
     assert conn.rolled_back is True
     assert conn.committed is False
@@ -182,3 +209,37 @@ def test_already_loaded_returns_false_when_no_match():
     result = already_loaded(conn, "bronze.atp_history", "2024.csv", "somehash")
 
     assert result is False
+
+
+def _record(caplog, message):
+    return next(r for r in caplog.records if r.message == message)
+
+
+@pytest.mark.parametrize("ongoing", [True, False])
+def test_load_logs_the_ongoing_flag_when_rows_are_inserted(caplog, ongoing):
+    with caplog.at_level(logging.INFO):
+        load(FakeConnection(), "atp", ongoing, "2024.csv", ATP_CSV)
+
+    record = _record(caplog, "rows_inserted")
+    assert record.ongoing is ongoing
+    assert record.rows == 2
+
+
+@pytest.mark.parametrize("ongoing", [True, False])
+def test_load_logs_the_ongoing_flag_when_the_file_was_already_loaded(caplog, ongoing):
+    conn = FakeConnection(fetchone_result=(1,))
+
+    with caplog.at_level(logging.INFO):
+        load(conn, "atp", ongoing, "2024.csv", ATP_CSV)
+
+    assert _record(caplog, "skip_already_loaded").ongoing is ongoing
+
+
+@pytest.mark.parametrize("ongoing", [True, False])
+def test_load_logs_the_ongoing_flag_when_the_insert_fails(caplog, ongoing):
+    conn = FakeConnection(raise_on_executemany=True)
+
+    with caplog.at_level(logging.INFO), pytest.raises(RuntimeError):
+        load(conn, "atp", ongoing, "2024.csv", ATP_CSV)
+
+    assert _record(caplog, "insert_failed").ongoing is ongoing
