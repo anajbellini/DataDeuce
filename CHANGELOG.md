@@ -30,6 +30,26 @@
 - Log skipped files in load()
 - Log row count on successful insert in load()
 - Log insert failures before re-raising in load()
+- Generate CHANGELOG.md from commit history via git-cliff
+- Build a custom Airflow image with src/ installed
+- Create a dedicated bronze_writer role at warehouse init
+- Pass warehouse connection env vars to Airflow containers
+- Add first draft of the bronze_layer DAG
+- Log and summarize loaded rows in the bronze_layer DAG
+- Schedule the bronze_layer DAG daily with retries
+- Raise on source files with no data rows
+- Add bronze tables for the ongoing tournament files
+- Created DDL script for schema "meta"
+- Grant the ingestion role access to the meta schema
+- Add get_state to read the ingested mtime of each source file
+- Add has_changed to detect updated source files
+- Add save_state to record the ingested mtime of a source file
+- List ongoing source files and expose their mtime
+- Load ongoing files into their own bronze tables
+- Log the ongoing flag in the load events
+- Skip unchanged source files in the bronze DAG
+- Always summarize and log skipped files in the bronze DAG
+- Run the bronze DAG every three hours
 
 ### Bug Fixes
 
@@ -41,6 +61,11 @@
 - Preserve malformed CSV rows via DictReader restkey
 - Rollback on insert failure to keep the connection usable
 - Guard against a None response in _is_transient
+- Bind published ports to loopback only
+- Pass plain dicts between tasks in the bronze_layer DAG
+- Send JSON logs to stdout instead of stderr
+- Store processed_at as timestamptz and make it not null
+- Reload a file that goes back to an earlier version
 
 ### Documentation
 
@@ -52,15 +77,28 @@
 - Profile current-season data behavior for the raw schema key design
 - Add docstrings to ingestion fetch functions
 - Trim verbose module docstring in test_load.py
+- Add a "How this project was built" section to the README
+- Fixed typo on comment
+- Point the compose env comment to db.py
+- Update the README for the incremental ingestion
 
 ### Refactor
 
 - Let pandas render notebook output instead of print()
 - Shorten load.py param names (conn, content)
+- Rename bronze_writer role to ingestion_runner
+- Configure the JSON logger once at DAG import
+- Store _ingested_at as timestamptz in the bronze tables
+- Move get_connection to a dedicated db module
 
 ### Testing
 
 - Add unit tests for fetch.py and load.py
+- Add integrity and task tests for the bronze_layer DAG
+
+### Styling
+
+- Use lowercase SQL keywords in the bronze DDL
 
 ### Miscellaneous Tasks
 
@@ -81,3 +119,8 @@
 - Add psycopg as direct dependency
 - Add python-dotenv and warehouse host/port env vars
 - Added dependencies
+- Add apache-airflow as a dev dependency for DAG authoring
+- Add src and the DAGs folder to the pytest path
+- Renamed some Postgres scripts
+- Renamed Bronze layer DDL script
+- Trim .gitignore to the tools actually used
