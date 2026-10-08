@@ -69,6 +69,10 @@ def test_summarize_runs_even_when_fetch_load_was_skipped(dag):
     assert dag.get_task("summarize").trigger_rule == "none_failed"
 
 
+def test_dag_runs_every_three_hours(dag):
+    assert dag.timetable.expression == "0 */3 * * *"
+
+
 def test_dag_runs_one_at_a_time_without_backfilling(dag):
     assert dag.catchup is False
     assert dag.max_active_runs == 1

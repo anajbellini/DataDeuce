@@ -20,7 +20,7 @@ _TOURS = ["atp", "wta"]
 
 @dag(
     start_date=datetime(2026, 10, 1, tzinfo=UTC),
-    schedule="@daily",
+    schedule="0 */3 * * *",
     catchup=False,
     max_active_runs=1,
     default_args={"retries": 2, "retry_delay": timedelta(seconds=30)},
