@@ -36,3 +36,29 @@ def has_changed(
         True if the file was never ingested or its mtime differs, False otherwise.
     """
     return state.get(source_file) != source_mtime
+
+
+def save_state(
+    conn: psycopg.Connection, source_file: str, source_mtime: datetime
+) -> None:
+    """Record the mtime of a source file after it was loaded successfully.
+
+    Inserts the file on first sight and updates its mtime and processed_at after
+    that. Call it only once the load succeeded, so a failed load is retried.
+
+    Args:
+        conn: The database connection.
+        source_file: The source file name (e.g. "2025.csv").
+        source_mtime: The file mtime reported by the source API.
+    """
+    query = """insert into meta.source_file_state (source_file, source_mtime)
+    values (%s, %s)
+    on conflict (source_file) do update set source_mtime = excluded.source_mtime, processed_at = now()"""
+
+    with conn.cursor() as cursor:
+        cursor.execute(
+            query,
+            (source_file, source_mtime),
+        )
+
+    conn.commit()
