@@ -67,7 +67,8 @@ def load(
 
     if already_loaded(conn, table, source_file, source_file_hash):
         logger.info(
-            "skip_already_loaded", extra={"tour": tour, "source_file": source_file}
+            "skip_already_loaded",
+            extra={"tour": tour, "ongoing": ongoing, "source_file": source_file},
         )
         return 0
 
@@ -91,12 +92,18 @@ def load(
         conn.commit()
         logger.info(
             "rows_inserted",
-            extra={"tour": tour, "source_file": source_file, "rows": len(rows)},
+            extra={
+                "tour": tour,
+                "ongoing": ongoing,
+                "source_file": source_file,
+                "rows": len(rows),
+            },
         )
     except Exception:
         conn.rollback()
         logger.exception(
-            "insert_failed", extra={"tour": tour, "source_file": source_file}
+            "insert_failed",
+            extra={"tour": tour, "ongoing": ongoing, "source_file": source_file},
         )
         raise
 

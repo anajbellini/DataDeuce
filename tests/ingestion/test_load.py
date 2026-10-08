@@ -6,6 +6,7 @@ real Postgres is touched.
 
 import hashlib
 import json
+import logging
 
 import pytest
 
@@ -208,3 +209,37 @@ def test_already_loaded_returns_false_when_no_match():
     result = already_loaded(conn, "bronze.atp_history", "2024.csv", "somehash")
 
     assert result is False
+
+
+def _record(caplog, message):
+    return next(r for r in caplog.records if r.message == message)
+
+
+@pytest.mark.parametrize("ongoing", [True, False])
+def test_load_logs_the_ongoing_flag_when_rows_are_inserted(caplog, ongoing):
+    with caplog.at_level(logging.INFO):
+        load(FakeConnection(), "atp", ongoing, "2024.csv", ATP_CSV)
+
+    record = _record(caplog, "rows_inserted")
+    assert record.ongoing is ongoing
+    assert record.rows == 2
+
+
+@pytest.mark.parametrize("ongoing", [True, False])
+def test_load_logs_the_ongoing_flag_when_the_file_was_already_loaded(caplog, ongoing):
+    conn = FakeConnection(fetchone_result=(1,))
+
+    with caplog.at_level(logging.INFO):
+        load(conn, "atp", ongoing, "2024.csv", ATP_CSV)
+
+    assert _record(caplog, "skip_already_loaded").ongoing is ongoing
+
+
+@pytest.mark.parametrize("ongoing", [True, False])
+def test_load_logs_the_ongoing_flag_when_the_insert_fails(caplog, ongoing):
+    conn = FakeConnection(raise_on_executemany=True)
+
+    with caplog.at_level(logging.INFO), pytest.raises(RuntimeError):
+        load(conn, "atp", ongoing, "2024.csv", ATP_CSV)
+
+    assert _record(caplog, "insert_failed").ongoing is ongoing
