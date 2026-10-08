@@ -11,7 +11,12 @@ from psycopg import sql
 
 logger = logging.getLogger(__name__)
 
-TABLES = {"atp": "bronze.atp_history", "wta": "bronze.wta_history"}
+TABLES = {
+    ("atp", True): "bronze.atp_ongoing",
+    ("atp", False): "bronze.atp_history",
+    ("wta", True): "bronze.wta_ongoing",
+    ("wta", False): "bronze.wta_history",
+}
 
 
 def already_loaded(
@@ -37,12 +42,17 @@ def already_loaded(
         return cursor.fetchone() is not None
 
 
-def load(conn: psycopg.Connection, tour: str, source_file: str, content: bytes) -> int:
+def load(
+    conn: psycopg.Connection, tour: str, ongoing: bool, source_file: str, content: bytes
+) -> int:
     """Hash content (sha256), skip if already loaded, else parse CSV rows and insert as jsonb payload.
 
     Args:
         conn: The database connection.
-        tour: Either "atp" or "wta", used to resolve the target bronze table.
+        tour: Either "atp" or "wta", used with ongoing to resolve the target
+            bronze table.
+        ongoing: True for the in-progress tournaments file, False for the
+            per-year history files.
         source_file: The source file name (e.g. "2025.csv").
         content: The raw CSV bytes, as returned by fetch().
 
@@ -52,7 +62,7 @@ def load(conn: psycopg.Connection, tour: str, source_file: str, content: bytes) 
     Raises:
         ValueError: If the file has no data rows.
     """
-    table = TABLES[tour]
+    table = TABLES[tour, ongoing]
     source_file_hash = hashlib.sha256(content).hexdigest()
 
     if already_loaded(conn, table, source_file, source_file_hash):
