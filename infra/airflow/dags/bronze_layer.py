@@ -5,8 +5,9 @@ from datetime import UTC, datetime, timedelta
 
 from airflow.sdk import dag, task
 
+from ingestion.db import get_connection
 from ingestion.fetch import SourceFile, fetch, list_source_files
-from ingestion.load import get_connection, load
+from ingestion.load import load
 from logging_config import configure_logger
 
 configure_logger()
