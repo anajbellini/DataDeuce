@@ -193,6 +193,18 @@ def test_load_rolls_back_and_reraises_on_insert_failure():
     assert conn.committed is False
 
 
+def test_already_loaded_queries_the_latest_snapshot_of_the_source_file():
+    conn = FakeConnection(fetchone_result=(1,))
+
+    already_loaded(conn, "bronze.atp_ongoing", "ongoing_tourneys.csv", "somehash")
+
+    [(query, _)] = conn.cursor_obj.executed
+    text = query.as_string()
+    assert '"bronze"."atp_ongoing"' in text
+    assert "ORDER BY _ingested_at DESC" in text
+    assert "LIMIT 1" in text
+
+
 def test_already_loaded_queries_with_source_file_and_hash():
     conn = FakeConnection(fetchone_result=(1,))
 

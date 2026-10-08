@@ -22,7 +22,10 @@ TABLES = {
 def already_loaded(
     conn: psycopg.Connection, table: str, source_file: str, source_file_hash: str
 ) -> bool:
-    """Check if (_source_file, _source_file_hash) already exists before inserting.
+    """Check if source_file_hash is the hash of the latest snapshot of source_file.
+
+    Only the latest snapshot counts, so a file that goes back to an earlier
+    version is loaded again and becomes the latest.
 
     Args:
         conn: The database connection.
@@ -31,10 +34,19 @@ def already_loaded(
         source_file_hash: The hash of the source file.
 
     Returns:
-        True if the (_source_file, _source_file_hash) pair already exists, False otherwise.
+        True if the latest snapshot of source_file has this hash, False otherwise.
     """
     query = sql.SQL(
-        "SELECT 1 FROM {table} WHERE _source_file = %s AND _source_file_hash = %s LIMIT 1"
+        """
+        WITH latest AS (
+            SELECT _source_file_hash
+            FROM {table}
+            WHERE _source_file = %s
+            ORDER BY _ingested_at DESC, id DESC
+            LIMIT 1
+        )
+        SELECT 1 FROM latest WHERE _source_file_hash = %s
+        """
     ).format(table=sql.Identifier(*table.split(".")))
 
     with conn.cursor() as cursor:
