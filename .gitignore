@@ -3,11 +3,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
-venv/
 .pytest_cache/
-.mypy_cache/
-.coverage
-htmlcov/
 
 # dbt
 target/
@@ -16,9 +12,6 @@ logs/
 .user.yml
 
 # Airflow
-airflow.db
-airflow-webserver.pid
-standalone_admin_password.txt
 infra/airflow/config/
 
 # Environment / secrets
@@ -28,10 +21,6 @@ infra/airflow/config/
 
 # macOS
 .DS_Store
-
-# Editors
-.vscode/
-.idea/
 
 # Claude Code local settings
 .claude/settings.local.json
