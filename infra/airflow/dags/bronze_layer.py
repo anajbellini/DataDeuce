@@ -2,12 +2,14 @@
 
 import logging
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from airflow.sdk import dag, task
 
 from ingestion.db import get_connection
 from ingestion.fetch import SourceFile, fetch, list_source_files
 from ingestion.load import load
+from ingestion.state import get_state, has_changed, save_state
 from logging_config import configure_logger
 
 configure_logger()
@@ -28,18 +30,45 @@ def bronze_layer():
 
     @task
     def list_files():
+        with get_connection() as conn:
+            states = get_state(conn)
+
         return [
-            {"tour": tour, "name": source.name, "url": source.url}
+            {
+                "tour": tour,
+                "ongoing": ongoing,
+                "name": source.name,
+                "url": source.url,
+                "mtime": source.mtime,
+            }
             for tour in _TOURS
-            for source in list_source_files(tour)
+            for ongoing in [True, False]
+            for source in list_source_files(tour, ongoing)
+            if has_changed(source.name, source.mtime, states)
         ]
 
     @task
-    def fetch_load(source: dict[str, str]) -> int:
-        fetched = fetch(SourceFile(name=source["name"], url=source["url"]))
+    def fetch_load(source: dict[str, Any]) -> int:
+        fetched = fetch(
+            SourceFile(
+                name=source["name"],
+                url=source["url"],
+                mtime=source["mtime"],
+            )
+        )
 
         with get_connection() as conn:
-            return load(conn, source["tour"], fetched.source_file, fetched.content)
+            rows = load(
+                conn,
+                source["tour"],
+                source["ongoing"],
+                fetched.source_file,
+                fetched.content,
+            )
+
+            save_state(conn, source["name"], source["mtime"])
+
+            return rows
 
     @task
     def summarize(row_counts) -> None:
